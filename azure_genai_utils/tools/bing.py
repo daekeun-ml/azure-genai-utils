@@ -4,6 +4,7 @@ import requests
 from langchain_core.tools import BaseTool
 from pydantic import BaseModel, Field
 from typing import Literal, Union, Optional, List
+from langchain_core.callbacks import CallbackManagerForToolRun
 
 DEFAULT_BING_WEB_SEARCH_ENDPOINT = "https://api.bing.microsoft.com/v7.0/search"
 DEFAULT_BING_NEWS_SEARCH_ENDPOINT = "https://api.bing.microsoft.com/v7.0/news/search"
@@ -56,12 +57,13 @@ class BingSearch(BaseTool):
     Tool that queries the Bing Search API and gets back json
     """
 
-    name: str = "bing_web_search"
+    name: str = "bing_search_results"
     description: str = (
-        "A search engine optimized for comprehensive, accurate, and trusted results. "
+        "A wrapper around Bing Search. "
         "Useful for when you need to answer questions about current events. "
         "Input should be a search query. [IMPORTANT] Input(query) should be over 5 characters."
     )
+
     args_schema: type[BaseModel] = BingSearchInput
 
     api_key: Optional[str] = None
@@ -92,6 +94,7 @@ class BingSearch(BaseTool):
         if api_key is None:
             raise ValueError("bing_subscription_key is not set.")
 
+        self.name = "bing_search_results"
         self.api_key = api_key
         self.max_results = max_results
         self.locale = locale
@@ -100,7 +103,9 @@ class BingSearch(BaseTool):
         self.news_freshness = news_freshness
         self.format_output = format_output
 
-    def _run(self, query: str) -> Union[List[dict], List[str]]:
+    def _run(
+        self, query: str, run_manager: Optional[CallbackManagerForToolRun] = None
+    ) -> Union[List[dict], List[str]]:
         """Implementing BaseTool's _run(...)"""
         websearch_results = self._bing_websearch_results(
             query, max_results=self.max_results, locale=self.locale

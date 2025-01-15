@@ -4,7 +4,7 @@ with open("README.md", "r") as f:
     long_description = f.read()
 setup(
     name="azure-genai-utils",
-    version="0.0.2.4",
+    version="0.0.2.5",
     description="Utility functions for Azure GenAI",
     long_description=long_description,
     long_description_content_type="text/markdown",
@@ -27,6 +27,10 @@ setup(
     ],
     packages=find_packages(exclude=[]),
     keywords=[
+        "azure",
+        "genai",
+        "azure-genai-utils",
+        "azure-genai",
         "langchain",
         "langgraph",
     ],
