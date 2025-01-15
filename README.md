@@ -57,7 +57,7 @@ print(results)
 <summary>Expand</summary>
 
 ```
-from azure_genai_utils.synthetic import (
+from azure_genai_utils.synthetic.qa_generator import (
     QADataGenerator,
     CustomQADataGenerator,
     QAType,
