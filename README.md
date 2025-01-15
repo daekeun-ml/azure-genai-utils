@@ -35,7 +35,7 @@ load_dotenv()
 
 # Basic usage
 bing = BingSearch(max_results=2, locale="ko-KR")
-results = bing.invoke("마이크로소프트 오토젠")
+results = bing.invoke("Microsoft AutoGen")
 print(results)
 
 ## Include news search results and format output
@@ -46,7 +46,7 @@ bing = BingSearch(
     include_entity=False,
     format_output=True,
 )
-results = bing.invoke("마이크로소프트 오토젠")
+results = bing.invoke("Microsoft AutoGen")
 print(results)
 ```
 </details>
@@ -57,7 +57,7 @@ print(results)
 <summary>Expand</summary>
 
 ```
-from azure_genai_utils.synthetic.qa_generator import (
+from azure_genai_utils.synthetic import (
     QADataGenerator,
     CustomQADataGenerator,
     QAType,

@@ -4,8 +4,8 @@ with open("README.md", "r") as f:
     long_description = f.read()
 setup(
     name="azure-genai-utils",
-    version="0.0.2.3",
-    description="Azure GenAI utils",
+    version="0.0.2.4",
+    description="Utility functions for Azure GenAI",
     long_description=long_description,
     long_description_content_type="text/markdown",
     license="Apache License 2.0",
@@ -31,7 +31,7 @@ setup(
         "langgraph",
     ],
     python_requires=">=3.8",
-    package_data={},
+    include_package_data=True,
     zip_safe=False,
     classifiers=[
         "Programming Language :: Python :: 3",
