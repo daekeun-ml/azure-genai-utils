@@ -11,7 +11,7 @@ class RetrievalChain(ABC):
     """
     Base class for retrieval chains.
 
-    :param source_uri: USource URI
+    :param source_uri: Source URI
     :param k: Number of results to retrieve
     :param embedding_name: Name of the embedding
     :param model_name: Name of the model

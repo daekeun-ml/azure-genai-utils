@@ -11,8 +11,12 @@ from typing import List, Annotated, Optional
 class PDFRetrievalChain(RetrievalChain):
     def __init__(
         self,
-        source_uri: Annotated[str, "Source URI"],
+        source_uri: Annotated[List[str], "Source URI"],
+        k: Annotated[int, "Number of results to retrieve"] = 10,
         loader_type: Annotated[str, "PDF Loader Type"] = "PDFPlumber",
+        chunk_size: Annotated[int, "Chunk Size"] = 300,
+        chunk_overlap: Annotated[int, "Chunk Overlap"] = 50,
+        **kwargs,  # Additional keyword arguments for parent class
     ):
         """
         Initialize the retrieval chain with the source URI and loader type.
@@ -20,14 +24,17 @@ class PDFRetrievalChain(RetrievalChain):
         :param source_uri: URI of the PDF source
         :param loader_type: Type of PDF loader to use. Options are "PDFPlumber", "PyPDF", or "PyMuPDF".
         """
-        self.source_uri = source_uri
-        self.loader_type = loader_type
-        self.k = 10
+        super().__init__(**kwargs)
+        self.source_uri = source_uri  # Override if needed
+        self.k = k  # Override if needed
+        self.loader_type = loader_type  # Specific to PDFRetrievalChain
         self.loader_map = {
             "PDFPlumber": PDFPlumberLoader,
             "PyPDF": PyPDFLoader,
             "PyMuPDF": PyMuPDFLoader,
         }
+        self.chunk_size = chunk_size
+        self.chunk_overlap = chunk_overlap
 
     def get_loader(self, loader_type: Optional[str] = None):
         """
@@ -66,4 +73,6 @@ class PDFRetrievalChain(RetrievalChain):
 
         :return: RecursiveCharacterTextSplitter instance
         """
-        return RecursiveCharacterTextSplitter(chunk_size=300, chunk_overlap=50)
+        return RecursiveCharacterTextSplitter(
+            chunk_size=self.chunk_size, chunk_overlap=self.chunk_overlap
+        )
