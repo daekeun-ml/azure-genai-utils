@@ -9,12 +9,12 @@ from langchain import hub
 
 class RetrievalChain(ABC):
     """
-    Base class for retrieval chains
-    Args:
-        source_uri: Source URI
-        k: Number of results to retrieve
-        embedding_name: Name of the embedding
-        model_name: Name of the model
+    Base class for retrieval chains.
+
+    :param source_uri: USource URI
+    :param k: Number of results to retrieve
+    :param embedding_name: Name of the embedding
+    :param model_name: Name of the model
     """
 
     def __init__(self, **kwargs):
