@@ -26,6 +26,32 @@ aoai = AOAI()
 aoai.simple_test()
 ```
 
+### PDF RAG Chain
+
+
+<details markdown="block">
+<summary>Expand</summary>
+
+```python
+from azure_genai_utils.rag.pdf import PDFRetrievalChain
+
+pdf_path = "[YOUR-PDF-PATH]"
+
+pdf = PDFRetrievalChain(
+    source_uri=[pdf_path],
+    loader_type="PDFPlumber",
+    model_name="gpt-4o-mini",
+    embedding_name="text-embedding-3-large",
+    chunk_size=500,
+    chunk_overlap=50,
+).create_chain()
+
+question = "[YOUR-QUESTION]"
+docs = pdf.retriever.invoke(question)
+results = pdf.chain.invoke({"chat_history": "", "question": question, "context": docs})
+```
+</details>
+
 ### Bing Search
 
 <details markdown="block">
