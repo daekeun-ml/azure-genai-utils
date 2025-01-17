@@ -20,7 +20,7 @@ def stream_response(response, return_output=False):
     This function iterates over each item in the `response` iterable. If the item is an instance of `AIMessageChunk`,
     it extracts the contents of the chunk and outputs it. If the item is a string, it outputs the string directly. Optionally, the function
     can return a concatenated string of all the response chunks.
-    
+
     :param response (iterable): An iterable of response chunks that can be `AIMessageChunk` objects or strings.
     :param return_output (bool, optional): If True, the function returns the concatenated response string. Default is False.
     :return str: The concatenated response string if `return_output` is True. Otherwise, nothing is returned.
@@ -29,7 +29,7 @@ def stream_response(response, return_output=False):
     for token in response:
         if isinstance(token, AIMessageChunk):
             if isinstance(token.content, list):
-                answer += ''.join(str(item) for item in token.content)
+                answer += "".join(str(item) for item in token.content)
             else:
                 answer += token.content
             print(token.content, end="", flush=True)
@@ -48,8 +48,8 @@ def tool_callback(tool) -> None:
     print(f"Tool: {tool.get('tool')}")
     if tool_input := tool.get("tool_input"):
         for k, v in tool_input.items():
-            print(f"{k}: {v}")  .
-    print(f"Log: {tool.get('log')}")  
+            print(f"{k}: {v}")
+    print(f"Log: {tool.get('log')}")
 
 
 def observation_callback(observation) -> None:
@@ -57,7 +57,7 @@ def observation_callback(observation) -> None:
     Callback function for observation.
     """
     print("[Observation]")
-    print(f"Observation: {observation.get('observation')}") 
+    print(f"Observation: {observation.get('observation')}")
 
 
 def result_callback(result: str) -> None:
@@ -166,7 +166,7 @@ def format_terminal_dict(data):
 
 
 def _display_message_tree(data, indent=0, node=None, is_root=False):
-    """ Print JSON object tree structure without type information. """
+    """Print JSON object tree structure without type information."""
     spacing = " " * indent * 4
     color = depth_colors.get(indent + 1, depth_colors["default"])
 
@@ -302,7 +302,7 @@ def stream_graph(
 ):
     """
     Stream the output of the LangGraph execution by printing it.
-    
+
     param: graph (CompiledStateGraph): The compiled LangGraph object to execute
     param: inputs (dict): The input dictionary to pass to the graph
     param: config (RunnableConfig): The execution configuration
@@ -343,8 +343,8 @@ def invoke_graph(
     param: inputs (dict): The input dictionary to pass to the graph
     param: config (RunnableConfig): The execution configuration
     param: node_names (List[str], optional): The list of node names to output. Default is an empty list
-    param: callback (Callable, optional): The callback function for each chunk processing. Default is None    
-    return: None 
+    param: callback (Callable, optional): The callback function for each chunk processing. Default is None
+    return: None
     """
 
     def format_namespace(namespace):
