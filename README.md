@@ -20,14 +20,18 @@ This repository contains a set of utilities for working with Azure GenAI. The ut
 ## Usage 
 
 ### Azure OpenAI Test
+
+<details markdown="block">
+<summary>Expand</summary>
+
 ```python
 from azure_genai_utils.aoai_test import AOAI
 aoai = AOAI()
-aoai.simple_test()
+aoai.test_api_call()
 ```
+</details>
 
 ### PDF RAG Chain
-
 
 <details markdown="block">
 <summary>Expand</summary>
@@ -190,6 +194,53 @@ try:
     )
 except Exception as e:
     print(f"Error generating QAs: {e}")
+```
+</details>
+
+### Azure Custom Speech
+<details markdown="block">
+<summary>Expand</summary>
+
+```python
+from azure_genai_utils.stt.stt_generator import CustomSpeechToTextGenerator
+
+# Initialize the CustomSpeechToTextGenerator
+stt = CustomSpeechToTextGenerator(
+    custom_speech_lang="Korean",
+    synthetic_text_file="cc_support_expressions.jsonl",
+    train_output_dir="synthetic_data_train",
+    train_output_dir_aug="synthetic_data_train_aug",
+    eval_output_dir="synthetic_data_eval",
+)
+
+### Training set
+# Generate synthetic text
+content = stt.generate_synthetic_text(num_samples=2, model_name="gpt-4o-mini")
+stt.save_synthetic_text(output_dir="plain_text")
+
+# Generate synthetic wav files for training
+train_tts_voice_list = [
+    "ko-KR-InJoonNeural",
+    "zh-CN-XiaoxiaoMultilingualNeural",
+    "en-GB-AdaMultilingualNeural",
+]
+stt.generate_synthetic_wav(
+    mode="train", tts_voice_list=train_tts_voice_list, delete_old_data=True
+)
+
+# Augment the train data (Optional)
+stt.augment_wav_files(num_augments=4)
+# Package the train data to be used in the training pipeline
+stt.package_trainset(use_augmented_data=True)
+
+### Evaluation set
+# Generate synthetic wav files for evaluation
+eval_tts_voice_list = ["ko-KR-YuJinNeural"]
+stt.generate_synthetic_wav(
+    mode="eval", tts_voice_list=eval_tts_voice_list, delete_old_data=True
+)
+# Package the eval data to be used in the evaluation pipeline
+stt.package_evalset(eval_dataset_dir="eval_dataset")
 ```
 </details>
 
