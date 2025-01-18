@@ -1,3 +1,4 @@
+import os
 from audiomentations import (
     AddBackgroundNoise,
     OneOf,
@@ -5,9 +6,6 @@ from audiomentations import (
     Aliasing,
     AddGaussianNoise,
     LoudnessNormalization,
-    TimeStretch,
-    PitchShift,
-    Shift,
     Gain,
     GainTransition,
     BandPassFilter,
@@ -25,22 +23,22 @@ from audiomentations import (
     AirAbsorption,
     PeakingFilter,
 )
-import numpy as np
 
 
 def get_audio_augments_baseline():
+    current_dir = os.path.dirname(__file__)
     augment = Compose(
         [
             OneOf(
                 [
                     AddBackgroundNoise(
-                        sounds_path="samples/bg-noise.mp3",
+                        sounds_path=os.path.join(current_dir, "bg-noise.mp3"),
                         noise_rms="absolute",
                         min_absolute_rms_db=-30,
                         max_absolute_rms_db=-10,
                     ),
                     AddBackgroundNoise(
-                        sounds_path="samples/bg-noise.mp3",
+                        sounds_path=os.path.join(current_dir, "bg-noise.mp3"),
                         min_snr_db=2,
                         max_snr_db=4,
                     ),

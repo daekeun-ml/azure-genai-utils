@@ -1,2 +1,3 @@
 include azure_genai_utils/synthetic/prompt_templates/en/*.txt
 include azure_genai_utils/synthetic/prompt_templates/ko/*.txt
+include azure_genai_utils/stt/*.mp3

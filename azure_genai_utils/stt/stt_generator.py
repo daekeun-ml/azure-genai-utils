@@ -3,9 +3,14 @@ import json
 import glob
 import html
 import datetime
+import zipfile
+import shutil
 import azure.cognitiveservices.speech as speechsdk
 from azure_genai_utils.aoai import AOAI
 from typing import Optional
+from .augment import get_audio_augments_baseline
+from scipy.io import wavfile
+from audiomentations.core.audio_loading_utils import load_sound_file
 
 STT_LOCALE_DICT = {
     "Afrikaans (South Africa)": "af-ZA",
@@ -190,12 +195,25 @@ class CustomSpeechToTextGenerator(AOAI):
         self,
         ai_speech_api_key: Optional[str] = None,
         ai_speech_region: Optional[str] = None,
+        custom_speech_lang: str = "Korean",
+        synthetic_text_file: str = "cc_support_expressions.jsonl",
+        train_output_dir: str = "synthetic_data_train",
+        train_output_dir_aug: str = "synthetic_data_train_aug",
+        eval_output_dir: str = "synthetic_data_eval",
         **kwargs,
     ):
         """
         Initialize Custom Speech to Text Generator
         """
         super().__init__()
+
+        self.custom_speech_lang = custom_speech_lang
+        self.synthetic_text_file = synthetic_text_file
+
+        if custom_speech_lang in STT_LOCALE_DICT:
+            self.custom_speech_locale = STT_LOCALE_DICT[custom_speech_lang]
+        else:
+            raise ValueError(f"Unsupported language: {custom_speech_lang}")
 
         if ai_speech_api_key is None:
             ai_speech_api_key = os.getenv("AZURE_AI_SPEECH_API_KEY")
@@ -205,6 +223,10 @@ class CustomSpeechToTextGenerator(AOAI):
 
         self.ai_speech_api_key = ai_speech_api_key
         self.ai_speech_region = ai_speech_region
+
+        self.train_output_dir = train_output_dir
+        self.train_output_dir_aug = train_output_dir_aug
+        self.eval_output_dir = eval_output_dir
 
         try:
             # Initialize SpeechConfig
@@ -231,6 +253,11 @@ class CustomSpeechToTextGenerator(AOAI):
                 raise ValueError("SpeechSynthesizer initialization failed.")
 
             print("=== Initialized CustomSpeechToTextGenerator ===")
+            print(f"Train Output Directory: {self.train_output_dir}")
+            print(
+                f"Train Output Directory for Augmented Data: {self.train_output_dir_aug}"
+            )
+            print(f"Eval Output Directory for Augmented Data: {self.eval_output_dir}")
 
         except Exception as e:
             print(f"An error occurred during Speech SDK initialization: {e}")
@@ -246,9 +273,7 @@ class CustomSpeechToTextGenerator(AOAI):
 
     def generate_synthetic_text(
         self,
-        synthetic_text_file: str = "cc_support_expressions.jsonl",
         num_samples: int = 2,
-        custom_speech_lang: str = "Korean",
         model_name: str = "gpt-4o-mini",
         max_tokens: int = 1024,
         temperature: float = 0.5,
@@ -257,19 +282,12 @@ class CustomSpeechToTextGenerator(AOAI):
         """
         Generate QnA for custom speech languages
         """
-        if custom_speech_lang in STT_LOCALE_DICT:
-            self.custom_speech_locale = STT_LOCALE_DICT[custom_speech_lang]
-        else:
-            raise ValueError(
-                f"Unsupported language '{custom_speech_lang}'. Please choose from: {list(STT_LOCALE_DICT.keys())}"
-            )
-        self.synthetic_text_file = synthetic_text_file
 
         topic = f"""
-        Call center QnA related expected spoken utterances for {custom_speech_lang} and English languages.
+        Call center QnA related expected spoken utterances for {self.custom_speech_lang} and English languages.
         """
         question = f"""
-        create {num_samples} lines of jsonl of the topic in {custom_speech_lang} and English. jsonl format is required. 
+        create {num_samples} lines of jsonl of the topic in {self.custom_speech_lang} and English. jsonl format is required. 
         use 'no' as number and '{self.custom_speech_locale}', 'en-US' keys for the languages.
         only include the lines as the result. Do not include ```jsonl, ``` and blank line in the result. 
         """
@@ -359,8 +377,18 @@ class CustomSpeechToTextGenerator(AOAI):
                 print(f"=== File Name: {file_name} ===")
                 print(content)
 
+    # TTS_FOR_TRAIN=ko-KR-InJoonNeural,zh-CN-XiaoxiaoMultilingualNeural,en-GB-AdaMultilingualNeural
+    # TTS_FOR_EVAL=ko-KR-JiMinNeural
+
     def generate_synthetic_wav(
-        self, output_dir="synthetic_data", delete_old_data: bool = True
+        self,
+        mode: str = "train",
+        tts_voice_list=[
+            "ko-KR-InJoonNeural",
+            "zh-CN-XiaoxiaoMultilingualNeural",
+            "en-GB-AdaMultilingualNeural",
+        ],
+        delete_old_data: bool = True,
     ):
         """
         Generate synthetic audio files
@@ -370,8 +398,9 @@ class CustomSpeechToTextGenerator(AOAI):
             self.custom_speech_locale
         )  # List of languages to generate audio files
 
-        TTS_FOR_TRAIN = os.getenv("TTS_FOR_TRAIN")
-        TTS_FOR_EVAL = os.getenv("TTS_FOR_EVAL")
+        output_dir = self.train_output_dir
+        if mode == "eval":
+            output_dir = self.eval_output_dir
 
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
@@ -380,9 +409,7 @@ class CustomSpeechToTextGenerator(AOAI):
             for file in os.listdir(output_dir):
                 os.remove(os.path.join(output_dir, file))
 
-        train_tts_voices = TTS_FOR_TRAIN.split(",")
-
-        for tts_voice in train_tts_voices:
+        for tts_voice in tts_voice_list:
             with open(self.synthetic_text_file, "r", encoding="utf-8") as f:
                 for line in f:
                     try:
@@ -406,3 +433,126 @@ class CustomSpeechToTextGenerator(AOAI):
                     except json.JSONDecodeError as e:
                         print(f"Error decoding JSON on line: {line}")
                         print(e)
+
+    def augment_wav_files(
+        self,
+        num_augments: int = 5,
+        delete_old_data: bool = True,
+    ):
+        """
+        Augment wav files using audiomentations
+        """
+        orig_dir = self.train_output_dir
+        aug_dir = self.train_output_dir_aug
+
+        if not os.path.exists(aug_dir):
+            os.makedirs(aug_dir)
+
+        if delete_old_data:
+            for file in os.listdir(aug_dir):
+                os.remove(os.path.join(aug_dir, file))
+
+        files = os.listdir(orig_dir)
+        wav_files = [file for file in files if file.endswith(".wav")]
+
+        # Sort wav_files by 'no' in ascending order
+        wav_files.sort(key=lambda x: int(x.split("_")[0]))
+        print(wav_files)
+
+        augment = get_audio_augments_baseline()
+
+        # Play each WAV file in the output folder
+        for wav_file in wav_files:
+            file_path = os.path.join(orig_dir, wav_file)
+            samples, sample_rate = load_sound_file(
+                file_path, sample_rate=None, mono=False
+            )
+
+            if len(samples.shape) == 2 and samples.shape[0] > samples.shape[1]:
+                samples = samples.transpose()
+
+            augmented_samples = augment(samples=samples, sample_rate=int(sample_rate))
+            if len(augmented_samples.shape) == 2:
+                augmented_samples = augmented_samples.transpose()
+
+            for aug_idx in range(num_augments):
+                output_file_path = os.path.join(
+                    aug_dir, f"{wav_file}_aug_{aug_idx}.wav"
+                )
+                wavfile.write(
+                    output_file_path, rate=sample_rate, data=augmented_samples
+                )
+
+        # Copy the original wav files to the augmented folder
+        for f in glob.glob(f"{orig_dir}/*"):
+            if os.path.isfile(f):
+                shutil.copy2(f, aug_dir)
+
+        print("Augmentation completed.")
+
+    def package_trainset(
+        self,
+        use_augmented_data: bool = False,
+        train_dataset_dir: str = "train_dataset",
+        delete_old_data: bool = True,
+    ):
+        """
+        Package synthetic data into a zip file
+        """
+        output_dir = self.train_output_dir
+        if use_augmented_data:
+            output_dir = self.train_output_dir_aug
+
+        if not os.path.exists(train_dataset_dir):
+            os.makedirs(train_dataset_dir)
+
+        if delete_old_data:
+            for file in os.listdir(train_dataset_dir):
+                os.remove(os.path.join(train_dataset_dir, file))
+
+        files = os.listdir(output_dir)
+
+        timestamp = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
+        zip_filename = f"train_{self.custom_speech_locale}_{timestamp}.zip"
+        with zipfile.ZipFile(zip_filename, "w") as zipf:
+            for file in files:
+                zipf.write(os.path.join(output_dir, file), file)
+
+        print(f"Created zip file: {zip_filename}")
+        shutil.move(zip_filename, os.path.join(train_dataset_dir, zip_filename))
+        print(f"Moved zip file to: {os.path.join(train_dataset_dir, zip_filename)}")
+        train_dataset_path = {os.path.join(train_dataset_dir, zip_filename)}
+
+        return train_dataset_path
+
+    def package_evalset(
+        self,
+        eval_dataset_dir: str = "eval_dataset",
+        delete_old_data: bool = True,
+    ):
+        """
+        Package synthetic data into a zip file
+        """
+        output_dir = self.eval_output_dir
+
+        if not os.path.exists(eval_dataset_dir):
+            os.makedirs(eval_dataset_dir)
+
+        if delete_old_data:
+            for file in os.listdir(eval_dataset_dir):
+                os.remove(os.path.join(eval_dataset_dir, file))
+
+        files = os.listdir(output_dir)
+
+        timestamp = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
+        zip_filename = f"eval_{self.custom_speech_locale}_{timestamp}.zip"
+        with zipfile.ZipFile(zip_filename, "w") as zipf:
+            for file in files:
+                zipf.write(os.path.join(output_dir, file), file)
+
+        print(f"Created zip file: {zip_filename}")
+        shutil.move(zip_filename, os.path.join(eval_dataset_dir, zip_filename))
+        print(f"Moved zip file to: {os.path.join(eval_dataset_dir, zip_filename)}")
+        eval_dataset_path = {os.path.join(eval_dataset_dir, zip_filename)}
+
+        return eval_dataset_path
