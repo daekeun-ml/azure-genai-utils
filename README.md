@@ -8,6 +8,18 @@ This repository contains a set of utilities for working with Azure GenAI. The ut
 - Bing Search API Key
 - Python 3.8 or later
 - `.env` file: Please do not forget to modify the `.env` file to match your account. Rename `.env.sample` to `.env` or copy and use it
+    ```bash
+    AZURE_OPENAI_ENDPOINT=xxxxx
+    AZURE_OPENAI_API_KEY=xxxxx
+    OPENAI_API_VERSION=2024-12-01-preview
+    AZURE_OPENAI_DEPLOYMENT_NAME=gpt-4o-mini
+
+    # Optinoal, but required for LangChain
+    LANGCHAIN_TRACING_V2=false
+    LANGCHAIN_ENDPOINT=https://api.smith.langchain.com
+    LANGCHAIN_API_KEY=xxxxx
+    LANGCHAIN_PROJECT="YOUR-PROJECT"
+    ```
 
 ## Installation
 
@@ -25,7 +37,7 @@ This repository contains a set of utilities for working with Azure GenAI. The ut
 <summary>Expand</summary>
 
 ```python
-from azure_genai_utils.aoai_test import AOAI
+from azure_genai_utils.aoai import AOAI
 aoai = AOAI()
 aoai.test_api_call()
 ```
@@ -57,6 +69,11 @@ results = pdf.chain.invoke({"chat_history": "", "question": question, "context":
 </details>
 
 ### Bing Search
+Please make sure to set the following environment variables in your `.env` file:
+
+```bash
+BING_SUBSCRIPTION_KEY=xxxxx
+```
 
 <details markdown="block">
 <summary>Expand</summary>
@@ -198,6 +215,13 @@ except Exception as e:
 </details>
 
 ### Azure Custom Speech
+Please make sure to set the following environment variables in your `.env` file:
+
+```bash
+AZURE_AI_SPEECH_REGION=xxxxx
+AZURE_AI_SPEECH_API_KEY=xxxxx
+```
+
 <details markdown="block">
 <summary>Expand</summary>
 
