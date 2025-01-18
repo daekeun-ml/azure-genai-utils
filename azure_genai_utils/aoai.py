@@ -54,12 +54,15 @@ class AOAI:
         self.aoai_deployment_name = aoai_deployment_name
 
         try:
+            if self.aoai_api_endpoint is None:
+                raise ValueError("Azure OpenAI endpoint cannot be None")
+
             self.client = AzureOpenAI(
                 azure_endpoint=self.aoai_api_endpoint,
                 api_key=self.aoai_api_key,
                 api_version=self.aoai_api_version,
             )
-            print("=== Initialized AzuureOpenAI client ===")
+            print("=== Initialized AzureOpenAI client ===")
             print(f"AZURE_OPENAI_ENDPOINT={aoai_api_endpoint}")
             print(f"AZURE_OPENAI_API_VERSION={aoai_api_version}")
             print(f"AZURE_OPENAI_DEPLOYMENT_NAME={aoai_deployment_name}")
@@ -68,8 +71,18 @@ class AOAI:
             print("=== Failed to initialize AzureOpenAI client ===")
             print(e)
 
-    def simple_test(self):
-        # Create your prompt
+    def set_deployment_name(self, deployment_name: str):
+        """
+        Set the deployment name for Azure OpenAI
+        Args:
+            deployment_name: Azure OpenAI deployment name
+        """
+        self.aoai_deployment_name = deployment_name
+
+    def get_aoai_client(self):
+        return self.client
+
+    def test_api_call(self):
         """
         Simple API Call
         """
