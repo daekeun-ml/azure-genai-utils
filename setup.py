@@ -4,7 +4,7 @@ with open("README.md", "r") as f:
     long_description = f.read()
 setup(
     name="azure-genai-utils",
-    version="0.0.2.13",
+    version="0.0.2.14",
     description="Utility functions for Azure GenAI",
     long_description=long_description,
     long_description_content_type="text/markdown",

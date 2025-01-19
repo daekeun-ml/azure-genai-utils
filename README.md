@@ -32,10 +32,8 @@ This repository contains a set of utilities for working with Azure GenAI. The ut
 ## Usage 
 
 ### Azure OpenAI Test
-
 <details markdown="block">
 <summary>Expand</summary>
-
 ```python
 from azure_genai_utils.aoai import AOAI
 aoai = AOAI()
@@ -44,7 +42,6 @@ aoai.test_api_call()
 </details>
 
 ### PDF RAG Chain
-
 <details markdown="block">
 <summary>Expand</summary>
 
@@ -70,7 +67,6 @@ results = pdf.chain.invoke({"chat_history": "", "question": question, "context":
 
 ### Bing Search
 Please make sure to set the following environment variables in your `.env` file:
-
 ```bash
 BING_SUBSCRIPTION_KEY=xxxxx
 ```
@@ -104,7 +100,6 @@ print(results)
 </details>
 
 ### LangGraph Example (Bing Search + Azure GenAI)
-
 <details markdown="block">
 <summary>Expand</summary>
 
@@ -174,7 +169,6 @@ for event in graph.stream(inputs, stream_mode="values"):
 </details>
 
 ### Synthetic Data Generation
-
 <details markdown="block">
 <summary>Expand</summary>
 
@@ -216,12 +210,10 @@ except Exception as e:
 
 ### Azure Custom Speech
 Please make sure to set the following environment variables in your `.env` file:
-
 ```bash
 AZURE_AI_SPEECH_REGION=xxxxx
 AZURE_AI_SPEECH_API_KEY=xxxxx
 ```
-
 <details markdown="block">
 <summary>Expand</summary>
 
@@ -239,7 +231,10 @@ stt = CustomSpeechToTextGenerator(
 
 ### Training set
 # Generate synthetic text
-content = stt.generate_synthetic_text(num_samples=2, model_name="gpt-4o-mini")
+topic = "Call center QnA related expected spoken utterances"
+content = stt.generate_synthetic_text(
+    topic=topic, num_samples=2, model_name="gpt-4o-mini"
+)
 stt.save_synthetic_text(output_dir="plain_text")
 
 # Generate synthetic wav files for training

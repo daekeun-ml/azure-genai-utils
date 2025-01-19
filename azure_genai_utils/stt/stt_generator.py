@@ -7,11 +7,12 @@ import zipfile
 import shutil
 import azure.cognitiveservices.speech as speechsdk
 from azure_genai_utils.aoai import AOAI
-from typing import Optional
+from typing import Literal, Optional
 from .augment import get_audio_augments_baseline
 from scipy.io import wavfile
 from audiomentations.core.audio_loading_utils import load_sound_file
 
+# See https://learn.microsoft.com/en-us/azure/ai-services/speech-service/language-support?tabs=stt for supported locales
 STT_LOCALE_DICT = {
     "Afrikaans (South Africa)": "af-ZA",
     "Amharic (Ethiopia)": "am-ET",
@@ -173,17 +174,25 @@ STT_LOCALE_DICT = {
 }
 
 
-def get_audio_file_by_speech_synthesis(
-    speech_synthesizer, text, file_path, lang, default_tts_voice
+def _get_wav_file_by_speech_synthesis(
+    speech_synthesizer, text, file_path, lang, tts_voice
 ):
-    ssml = f"""<speak version='1.0'  xmlns="https://www.w3.org/2001/10/synthesis" xml:lang='{lang}'>
-                     <voice name='{default_tts_voice}'>
-                             {html.escape(text)}
-                     </voice>
-                   </speak>"""
-    speech_sythesis_result = speech_synthesizer.speak_ssml_async(ssml).get()
-    stream = speechsdk.AudioDataStream(speech_sythesis_result)
-    stream.save_to_wav_file(file_path)
+    """
+    Get audio file by speech synthesis
+    """
+    ssml = f"""<speak version='1.0' xmlns="https://www.w3.org/2001/10/synthesis" xml:lang='{lang}'>
+    <voice name='{tts_voice}'>{html.escape(text)}</voice></speak>"""
+    result = speech_synthesizer.speak_ssml_async(ssml).get()
+    stream = speechsdk.AudioDataStream(result)
+
+    if result.reason == speechsdk.ResultReason.SynthesizingAudioCompleted:
+        print(f"[DONE] {text} | [TTS] {tts_voice} | Speech synthesized successfully.")
+        stream.save_to_wav_file(file_path)
+    elif result.reason == speechsdk.ResultReason.Canceled:
+        cancellation_details = result.cancellation_details
+        print(f"[ERROR] Error synthesizing audio: {cancellation_details.reason}")
+        if cancellation_details.error_details:
+            print(f"[ERROR] Details: {cancellation_details.error_details}")
 
 
 class CustomSpeechToTextGenerator(AOAI):
@@ -273,6 +282,7 @@ class CustomSpeechToTextGenerator(AOAI):
 
     def generate_synthetic_text(
         self,
+        topic: str = "Call center QnA related expected spoken utterances",
         num_samples: int = 2,
         model_name: str = "gpt-4o-mini",
         max_tokens: int = 1024,
@@ -283,11 +293,8 @@ class CustomSpeechToTextGenerator(AOAI):
         Generate QnA for custom speech languages
         """
 
-        topic = f"""
-        Call center QnA related expected spoken utterances for {self.custom_speech_lang} and English languages.
-        """
         question = f"""
-        create {num_samples} lines of jsonl of the topic in {self.custom_speech_lang} and English. jsonl format is required. 
+        create {num_samples} lines of jsonl of the topic in {self.custom_speech_lang} and English languages. jsonl format is required. 
         use 'no' as number and '{self.custom_speech_locale}', 'en-US' keys for the languages.
         only include the lines as the result. Do not include ```jsonl, ``` and blank line in the result. 
         """
@@ -295,7 +302,7 @@ class CustomSpeechToTextGenerator(AOAI):
         system_message = """
         Generate plain text sentences of #topic# related text to improve the recognition of domain-specific words and phrases.
         Domain-specific words can be uncommon or made-up words, but their pronunciation must be straightforward to be recognized. 
-        Use text data that's close to the expected spoken utterances. The nummber of utterances per line should be 1. 
+        Use text data that's close to the expected spoken utterances. The number of utterances per line should be 1. 
         Here is examples of the expected format:
         {"no": 1, "string": "string", "string": "string"}
         {"no": 2, "string": "string", "string": "string"}
@@ -317,17 +324,19 @@ class CustomSpeechToTextGenerator(AOAI):
         )
 
         print("Usage Information:")
+
         if response.usage:
             # print(f"Cached Tokens: {response.usage.prompt_tokens_details.cached_tokens}") #only o1 models support this
             print(f"Completion Tokens: {response.usage.completion_tokens}")
             print(f"Prompt Tokens: {response.usage.prompt_tokens}")
             print(f"Total Tokens: {response.usage.total_tokens}")
             content = response.choices[0].message.content
-            # print(content)
+
             with open(self.synthetic_text_file, "w", encoding="utf-8") as f:
                 for line in content.split("\n"):
                     if line.strip():  # Check if the line is not empty
                         f.write(line + "\n")
+
             return content
         else:
             print("No usage information available.")
@@ -377,26 +386,28 @@ class CustomSpeechToTextGenerator(AOAI):
                 print(f"=== File Name: {file_name} ===")
                 print(content)
 
-    # TTS_FOR_TRAIN=ko-KR-InJoonNeural,zh-CN-XiaoxiaoMultilingualNeural,en-GB-AdaMultilingualNeural
-    # TTS_FOR_EVAL=ko-KR-JiMinNeural
-
     def generate_synthetic_wav(
         self,
-        mode: str = "train",
-        tts_voice_list=[
-            "ko-KR-InJoonNeural",
-            "zh-CN-XiaoxiaoMultilingualNeural",
-            "en-GB-AdaMultilingualNeural",
-        ],
+        mode: Literal["train", "eval"] = "train",
+        tts_voice_list=None,
         delete_old_data: bool = True,
     ):
         """
         Generate synthetic audio files
         """
+
         # Check https://learn.microsoft.com/en-us/azure/ai-services/speech-service/language-support?tabs=stt for supported locale
         language = (
             self.custom_speech_locale
         )  # List of languages to generate audio files
+
+        # List of TTS voices to generate audio files. TTS voice can be multilingual.
+        # For example, Korean text can be synthesized by 'zh-CN-XiaoxiaoMultilingualNeural' voice.
+        if tts_voice_list is None:
+            tts_voice_list = [
+                "zh-CN-XiaoxiaoMultilingualNeural",
+                "en-GB-AdaMultilingualNeural",
+            ]
 
         output_dir = self.train_output_dir
         if mode == "eval":
@@ -418,8 +429,8 @@ class CustomSpeechToTextGenerator(AOAI):
                         text = expression[language]
                         timestamp = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
                         file_name = f"{no}_locale_{language}_speaker_{tts_voice}_{timestamp}.wav"
-                        print(f"Generating {file_name}")
-                        get_audio_file_by_speech_synthesis(
+                        print(f"[{mode}] Generating {file_name}")
+                        _get_wav_file_by_speech_synthesis(
                             self.speech_synthesizer,
                             text,
                             os.path.join(output_dir, file_name),
