@@ -34,6 +34,7 @@ This repository contains a set of utilities for working with Azure GenAI. The ut
 ### Azure OpenAI Test
 <details markdown="block">
 <summary>Expand</summary>
+
 ```python
 from azure_genai_utils.aoai import AOAI
 aoai = AOAI()
