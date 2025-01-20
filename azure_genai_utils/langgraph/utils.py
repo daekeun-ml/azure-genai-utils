@@ -18,5 +18,5 @@ def visualize_graph(graph, xray=False, output_file_path=None):
                     )
                 )
             )
-    except Exception as e:
+    except (TypeError, ValueError, AttributeError) as e:
         print(f"[ERROR] Visualize Graph Error: {e}")

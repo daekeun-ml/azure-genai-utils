@@ -1,6 +1,7 @@
 import os
 import json
 import requests
+from bs4 import BeautifulSoup
 from langchain_core.tools import BaseTool
 from pydantic import BaseModel, Field
 from typing import Literal, Union, Optional, List
@@ -9,6 +10,39 @@ from langchain_core.callbacks import CallbackManagerForToolRun
 DEFAULT_BING_WEB_SEARCH_ENDPOINT = "https://api.bing.microsoft.com/v7.0/search"
 DEFAULT_BING_NEWS_SEARCH_ENDPOINT = "https://api.bing.microsoft.com/v7.0/news/search"
 DEFAULT_BING_ENTITY_SEARCH_ENDPOINT = "https://api.bing.microsoft.com/v7.0/entities"
+
+
+def get_webpage_context(url: str) -> Optional[str]:
+    """
+    Fetch the main content from a webpage.
+    Args:
+        url (str): The URL of the webpage.
+    Returns:
+        str: Extracted content from the webpage.
+    """
+    headers = {
+        "User-Agent": (
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+            "(KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36"
+        )
+    }
+
+    try:
+        response = requests.get(url, headers=headers, timeout=10)
+        response.raise_for_status()
+        # print(f"Detected encoding: {response.encoding}")
+        response.encoding = "utf-8"
+        soup = BeautifulSoup(response.text, "html.parser")
+
+        # Extract main content (simple heuristic using <p> tags)
+        paragraphs = soup.find_all("p")
+        content = " ".join([p.get_text(strip=True) for p in paragraphs])
+
+        # Limit content to avoid excessive data
+        return content
+    except requests.RequestException as e:
+        print(f"Error fetching context from {url}: {e}")
+        return None
 
 
 def tag_search_result(result: dict):
@@ -22,24 +56,38 @@ def tag_search_result(result: dict):
 
     if result["kind"] == "web":
         title = json.dumps(result["title"], ensure_ascii=False)[1:-1]
+        snippet = json.dumps(result["snippet"], ensure_ascii=False)[1:-1]
         content = json.dumps(result["content"], ensure_ascii=False)[1:-1]
         url = result["url"]
-        thumbnail_url = result["thumbnail_url"]
+        # thumbnail_url = result["thumbnail_url"]
         source = result["source"]
-        tag_result = f"<document><kind>web</kind><title>{title}</title><content>{content}</content><url>{url}</url><thumbnail_url>{thumbnail_url}</thumbnail_url><source>{source}</source></document>"
+        tag_result = (
+            f"<document><kind>web</kind><title>{title}</title>"
+            f"<snippet>{snippet}</snippet><content>{content}</content>"
+            f"<url>{url}</url><source>{source}</source></document>"
+        )
     elif result["kind"] == "news":
         title = json.dumps(result["title"], ensure_ascii=False)[1:-1]
+        snippet = json.dumps(result["snippet"], ensure_ascii=False)[1:-1]
         content = json.dumps(result["content"], ensure_ascii=False)[1:-1]
         url = result["url"]
         image = result["image"]
-        tag_result = f"<document><kind>news</kind><title>{title}</title><content>{content}</content><url>{url}</url><image>{image}</image></document>"
+        tag_result = (
+            f"<document><kind>news</kind><title>{title}</title>"
+            f"<snippet>{snippet}</snippet><content>{content}</content>"
+            f"<url>{url}</url><image>{image}</image></document>"
+        )
     elif result["kind"] == "entity":
         name = json.dumps(result["name"], ensure_ascii=False)[1:-1]
         content = json.dumps(result["content"], ensure_ascii=False)[1:-1]
         url = result["url"]
         image = result["image"]
         info = json.dumps(result["info"], ensure_ascii=False)[1:-1]
-        tag_result = f"<document><kind>entity</kind><name>{name}</name><content>{content}</content><url>{url}</url><image>{image}</image><info>{info}</info></document>"
+        tag_result = (
+            f"<document><kind>entity</kind><name>{name}</name>"
+            f"<content>{content}</content><info>{info}</info>"
+            f"<url>{url}</url><image>{image}</image></document>"
+        )
     else:
         tag_result = ""
 
@@ -165,7 +213,12 @@ class BingSearch(BaseTool):
                 metadata_result = {
                     "kind": "web",
                     "title": result["name"],
-                    "content": result["snippet"],
+                    "snippet": result["snippet"],
+                    "content": (
+                        get_webpage_context(result["url"])
+                        if "url" in result
+                        else result["snippet"]
+                    ),
                     "url": result["url"] if "url" in result else None,
                     "thumbnail_url": (
                         result["thumbnailUrl"] if "thumbnailUrl" in result else None
@@ -214,7 +267,12 @@ class BingSearch(BaseTool):
                 metadata_result = {
                     "kind": "news",
                     "title": result["name"],
-                    "content": result["description"],
+                    "snippet": result["description"],
+                    "content": (
+                        get_webpage_context(result["url"])
+                        if "url" in result
+                        else result["description"]
+                    ),
                     "url": result["url"] if "url" in result else None,
                     "image": (
                         json.dumps(result["image"], ensure_ascii=False)
