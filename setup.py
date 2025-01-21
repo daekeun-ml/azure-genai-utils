@@ -4,7 +4,7 @@ with open("README.md", "r") as f:
     long_description = f.read()
 setup(
     name="azure-genai-utils",
-    version="0.0.2.15",
+    version="0.0.2.16",
     description="Utility functions for Azure GenAI",
     long_description=long_description,
     long_description_content_type="text/markdown",
@@ -12,6 +12,7 @@ setup(
     url="https://github.com/daekeun-ml/azure-genai-utils",
     install_requires=[
         "langchain>=0.3.0",
+        "langchain-community>=0.3.0",
         "langgraph>=0.2.62",
         "audiomentations>=0.38.0",
         "azure-identity",
@@ -22,6 +23,7 @@ setup(
         "tiktoken~=0.8.0",
         "openai>=1.59.8",
         "python-dotenv==1.0.1",
+        "pdfplumber>=0.11.5",
         "pybase64",
     ],
     packages=find_packages(exclude=[]),
@@ -31,6 +33,8 @@ setup(
         "azure-genai-utils",
         "azure-genai",
         "langchain",
+        "microsoft",
+        "bing",
         "langgraph",
     ],
     python_requires=">=3.8",
