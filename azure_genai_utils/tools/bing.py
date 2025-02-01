@@ -140,7 +140,7 @@ class BingSearch(BaseTool):
             api_key = os.environ.get("BING_SUBSCRIPTION_KEY", None)
 
         if api_key is None:
-            raise ValueError("bing_subscription_key is not set.")
+            raise ValueError("BING_SUBSCRIPTION_KEY is not set.")
 
         self.name = "bing_search_results"
         self.api_key = api_key
@@ -198,17 +198,24 @@ class BingSearch(BaseTool):
             **kwargs,
         }
 
-        response = requests.get(
-            DEFAULT_BING_WEB_SEARCH_ENDPOINT,
-            headers=headers,
-            params=params,
-            timeout=20,  # Add a timeout of 20 seconds
-        )
-        response.raise_for_status()
-        search_results = response.json()
+        try:
+            response = requests.get(
+                DEFAULT_BING_WEB_SEARCH_ENDPOINT,
+                headers=headers,
+                params=params,
+                timeout=20,  # Add a timeout of 20 seconds
+            )
+            response.raise_for_status()
+            search_results = response.json()
 
-        metadata_web_results = []
-        if "webPages" in search_results:
+            if (
+                "webPages" not in search_results
+                or "value" not in search_results["webPages"]
+            ):
+                print(f"No web search results found for query: {query}")
+                return []
+
+            metadata_web_results = []
             for result in search_results["webPages"]["value"]:
                 metadata_result = {
                     "kind": "web",
@@ -227,7 +234,11 @@ class BingSearch(BaseTool):
                 }
                 metadata_web_results.append(metadata_result)
 
-        return metadata_web_results
+            return metadata_web_results
+
+        except requests.RequestException as e:
+            print(f"Error fetching Bing Web search results: {e}")
+            return []
 
     def _bing_newssearch_results(
         self,
@@ -252,17 +263,21 @@ class BingSearch(BaseTool):
         if news_freshness is not None:
             params["freshness"] = news_freshness
 
-        response = requests.get(
-            DEFAULT_BING_NEWS_SEARCH_ENDPOINT,
-            headers=headers,
-            params=params,
-            timeout=20,  # Add a timeout of 10 seconds
-        )
-        response.raise_for_status()
-        search_results = response.json()
+        try:
+            response = requests.get(
+                DEFAULT_BING_NEWS_SEARCH_ENDPOINT,
+                headers=headers,
+                params=params,
+                timeout=20,
+            )
+            response.raise_for_status()
+            search_results = response.json()
 
-        metadata_news_results = []
-        if "value" in search_results:
+            if "value" not in search_results or not search_results["value"]:
+                print(f"No news search results found for query: {query}")
+                return []
+
+            metadata_news_results = []
             for result in search_results["value"]:
                 metadata_result = {
                     "kind": "news",
@@ -282,7 +297,11 @@ class BingSearch(BaseTool):
                 }
                 metadata_news_results.append(metadata_result)
 
-        return metadata_news_results
+            return metadata_news_results
+
+        except requests.RequestException as e:
+            print(f"Error fetching Bing News search results: {e}")
+            return []
 
     def _bing_entitysearch_results(
         self, query: str, max_results: int, locale: str, **kwargs
@@ -296,20 +315,28 @@ class BingSearch(BaseTool):
             "count": max_results,
             "textDecorations": True,
             "textFormat": "HTML",
-            "mkt": "en-US",  # entity search usually works in en-US region.
+            "mkt": "en-US",
             **kwargs,
         }
-        response = requests.get(
-            DEFAULT_BING_ENTITY_SEARCH_ENDPOINT,
-            headers=headers,
-            params=params,
-            timeout=20,  # Add a timeout of 20 seconds
-        )
-        response.raise_for_status()
-        search_results = response.json()
 
-        metadata_entity_results = []
-        if "entities" in search_results:
+        try:
+            response = requests.get(
+                DEFAULT_BING_ENTITY_SEARCH_ENDPOINT,
+                headers=headers,
+                params=params,
+                timeout=20,
+            )
+            response.raise_for_status()
+            search_results = response.json()
+
+            if (
+                "entities" not in search_results
+                or "value" not in search_results["entities"]
+            ):
+                print(f"No entity search results found for query: {query}")
+                return []
+
+            metadata_entity_results = []
             for result in search_results["entities"]["value"]:
                 metadata_result = {
                     "kind": "entity",
@@ -329,4 +356,8 @@ class BingSearch(BaseTool):
                 }
                 metadata_entity_results.append(metadata_result)
 
-        return metadata_entity_results
+            return metadata_entity_results
+
+        except requests.RequestException as e:
+            print(f"Error fetching Bing Entity search results: {e}")
+            return []
