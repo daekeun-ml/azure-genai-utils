@@ -4,7 +4,7 @@ with open("README.md", "r") as f:
     long_description = f.read()
 setup(
     name="azure-genai-utils",
-    version="0.0.2.18",
+    version="0.0.2.19",
     description="Utility functions for Azure GenAI",
     long_description=long_description,
     long_description_content_type="text/markdown",
@@ -13,6 +13,7 @@ setup(
     install_requires=[
         "langchain>=0.3.16",
         "langchain-community>=0.3.16",
+        "langchain-openai>=0.3.3",
         "langgraph>=0.2.69",
         "audiomentations>=0.38.0",
         "azure-identity",
@@ -20,6 +21,8 @@ setup(
         "azure-cognitiveservices-speech>=1.42.0",
         "azure-ai-contentsafety==1.0.0",
         "azure-ai-inference>=1.0.0b8",
+        "azure-ai-evaluation>=1.2.0",
+        "azure-ai-projects>=1.0.0b5",
         "tiktoken~=0.8.0",
         "openai>=1.60.2",
         "python-dotenv==1.0.1",
