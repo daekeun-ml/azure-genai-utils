@@ -1,0 +1,40 @@
+[project]
+name = "azure-genai-utils"
+version = "0.0.2.21"
+description = "Utility functions for Azure GenAI"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "audiomentations>=0.41.0",
+    "azure-ai-contentsafety>=1.0.0",
+    "azure-ai-documentintelligence>=1.0.2",
+    "azure-ai-evaluation>=1.7.0",
+    "azure-ai-inference>=1.0.0b9",
+    "azure-ai-projects>=1.0.0b11",
+    "azure-cognitiveservices-speech>=1.44.0",
+    "azure-identity>=1.23.0",
+    "langchain>=0.3.25",
+    "langchain-community>=0.3.24",
+    "langchain-openai>=0.3.18",
+    "langgraph>=0.4.5",
+    "openai>=1.82.0",
+    "pdfplumber>=0.11.6",
+    "pybase64>=1.4.1",
+    "python-dotenv>=1.1.0",
+    "tiktoken>=0.9.0",
+]
+keywords = [
+    "azure",
+    "genai",
+    "azure-genai-utils",
+    "azure-genai",
+    "langchain",
+    "microsoft",
+    "bing",
+    "langgraph",
+]
+license = "Apache-2.0"
+
+[project.urls]
+homepage = "https://pypi.org/project/azure-genai-utils"
+repository = "https://github.com/daekeun-ml/azure-genai-utils"
